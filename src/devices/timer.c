@@ -30,12 +30,16 @@ static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
 static void real_time_delay (int64_t num, int32_t denom);
 
-struct sleep_thread_list
+struct sleep_thread_entry
 {
-  /* data */
-};
+  
+  int64_t sleep_time;
+  struct list_elem elem;
+  struct thread *t;
 
+} ;
 
+static struct list blockedThreadList;
 /** Sets up the timer to interrupt TIMER_FREQ times per second,
    and registers the corresponding interrupt. */
 void
@@ -43,6 +47,7 @@ timer_init (void)
 {
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
+  list_init(&blockedThreadList);
 }
 
 /** Calibrates loops_per_tick, used to implement brief delays. */
@@ -95,11 +100,28 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks) 
 {
-  int64_t start = timer_ticks ();
-
-  ASSERT (intr_get_level () == INTR_ON);
-  while (timer_elapsed (start) < ticks) 
-    thread_yield ();
+  enum intr_level old_level = intr_disable();
+  struct sleep_thread_entry *entry = (struct sleep_thread_entry*)malloc(sizeof(struct sleep_thread_entry));
+  entry->t = thread_current();
+  entry->sleep_time = ticks;
+  list_push_back(&blockedThreadList,entry->t);
+  thread_block();
+  intr_set_level(old_level);
+}
+static void
+sleep_tick(void)
+{
+  struct list_elem *e = list_begin(&blockedThreadList);
+  while (e != list_end(&blockedThreadList))
+  { 
+      struct sleep_thread_entry*entry = list_entry(e,struct sleep_thread_entry,elem);
+      if(--(entry->sleep_time)<=0){
+        thread_unblock(entry->t);
+        e = list_remove(e);
+      }else{
+        list_next(e);
+      }
+  }
 }
 
 /** Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -177,6 +199,7 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
+  sleep_tick();
   thread_tick ();
 }
 

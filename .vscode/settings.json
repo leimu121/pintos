@@ -1,5 +1,8 @@
 {
     "files.associations": {
-        "list.h": "c"
+        "list.h": "c",
+        "deque": "c",
+        "string": "c",
+        "vector": "c"
     }
 }
