@@ -3,6 +3,7 @@
         "list.h": "c",
         "deque": "c",
         "string": "c",
-        "vector": "c"
+        "vector": "c",
+        "stddef.h": "c"
     }
 }

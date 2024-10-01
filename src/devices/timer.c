@@ -116,10 +116,10 @@ sleep_tick(void)
   { 
       struct sleep_thread_entry*entry = list_entry(e,struct sleep_thread_entry,elem);
       if(--(entry->sleep_time)<=0){
+           e = list_remove(e);
         thread_unblock(entry->t);
-        e = list_remove(e);
       }else{
-        list_next(e);
+        e =  list_next(e);
       }
   }
 }
